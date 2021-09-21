@@ -12,11 +12,51 @@ grade: stable
 confinement: strict
 
 parts:
+  pango-static:
+    plugin: meson
+    source: https://git.launchpad.net/ubuntu/+source/pango1.0
+    source-type: git
+    source-branch: applied/ubuntu/focal
+    build-packages:
+      - fonts-cantarell
+      - gnome-pkg-tools
+      - gobject-introspection
+      - gtk-doc-tools
+      - help2man
+      - libcairo2-dev
+      - libfontconfig1-dev
+      - libfreetype6-dev
+      - libfribidi-dev
+      - libgirepository1.0-dev
+      - libglib2.0-dev
+      - libharfbuzz-dev
+      - libthai-dev
+      - libx11-dev
+      - libxft-dev
+      - libxrender-dev
+      - libxt-dev
+      - locales
+      - meson
+      - perl
+      - pkg-config
+    meson-parameters:
+      - -Ddefault_library=both
+    prime:
+      - -*
+
   plymouth:
+    after: [ pango-static ]
     plugin: autotools
     source: https://git.launchpad.net/ubuntu/+source/plymouth
     source-type: git
     source-branch: applied/ubuntu/focal-updates
+    build-packages:
+      - libdrm-dev
+      - libgtk-3-dev
+      - libpng-dev
+      - libudev-dev
+      - pkg-config
+      - systemd
     stage-packages:
       - libdrm2
       - libgraphite2-3
@@ -38,6 +78,8 @@ parts:
       - --with-release-file=/etc/os-release
       - --with-system-root-install
       - --without-rhgb-compat-link
+      # Use compiled pango static libraries
+      - LDFLAGS=-L$SNAPCRAFT_STAGE/usr/local/lib/$SNAPCRAFT_ARCH_TRIPLET
     override-build: |
       set -ex
       # Apply UC-specific patches, then build
@@ -45,6 +87,19 @@ parts:
       git config user.name "snapcraft"
       git am "$SNAPCRAFT_PROJECT_DIR"/plymouth-patch/*.patch
       snapcraftctl build
+      # Deactivate/remove bits unneeded or replaced by config part
+      service_d="$SNAPCRAFT_PART_INSTALL"/lib/systemd/system
+      rm "$service_d"/multi-user.target.wants/plymouth-quit-wait.service
+      rm "$service_d"/multi-user.target.wants/plymouth-quit.service
+      rm "$service_d"/sysinit.target.wants/plymouth-read-write.service
+      rm "$service_d"/plymouth-start.service
+      rm "$service_d"/plymouth-quit.service
+      # Set UC as the default plymouth theme
+      ln -sf ubuntu-core/ubuntu-core.plymouth \
+          "$SNAPCRAFT_PART_INSTALL"/usr/share/plymouth/themes/default.plymouth
+      # Strip binaries
+      find "$SNAPCRAFT_PART_INSTALL"/ -executable -type f | xargs file -Ni |
+          grep 'application/x-executable\|application/x-sharedlib' | cut -d: -f1 | xargs strip
     prime:
       - bin/plymouth
       - sbin/plymouthd
@@ -56,9 +111,21 @@ parts:
       - usr/lib/*/plymouth/script.so
       - usr/lib/*/plymouth/text.so
       - usr/lib/*/plymouth/renderers/drm.so
-      - usr/lib/*/plymouth/renderers/framebuffer.so
+      - usr/lib/*/plymouth/renderers/frame-buffer.so
       - usr/share/plymouth/themes/details/
+      - usr/share/plymouth/themes/text/
+      - usr/share/plymouth/themes/default.plymouth
       # Dependencies
       - usr/lib/*/libdrm.so*
       - usr/lib/*/libpng16.so*
       - usr/lib/*/libgraphite2.so*
+
+  core-theme:
+    plugin: dump
+    source: themes
+    organize:
+      ubuntu-core: usr/share/plymouth/themes/ubuntu-core
+
+  config:
+    plugin: dump
+    source: config
