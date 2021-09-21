@@ -62,7 +62,6 @@ parts:
       - libdrm2
       - libgraphite2-3
       - libpng16-16
-
     autotools-configure-parameters:
       # Try to use same options as the deb package
       - --disable-silent-rules
@@ -90,11 +89,24 @@ parts:
       snapcraftctl build
       # Deactivate/remove bits unneeded or replaced by config part
       service_d="$SNAPCRAFT_PART_INSTALL"/lib/systemd/system
-      rm "$service_d"/multi-user.target.wants/plymouth-quit-wait.service
-      rm "$service_d"/multi-user.target.wants/plymouth-quit.service
-      rm "$service_d"/sysinit.target.wants/plymouth-read-write.service
-      rm "$service_d"/plymouth-start.service
-      rm "$service_d"/plymouth-quit.service
+      rm "$service_d"/multi-user.target.wants/plymouth-quit-wait.service \
+         "$service_d"/multi-user.target.wants/plymouth-quit.service \
+         "$service_d"/sysinit.target.wants/plymouth-read-write.service \
+         "$service_d"/kexec.target.wants/plymouth-kexec.service \
+         "$service_d"/initrd-switch-root.target.wants/plymouth-switch-root.service \
+         "$service_d"/initrd-switch-root.target.wants/plymouth-start.service \
+         "$service_d"/plymouth-start.service \
+         "$service_d"/plymouth-quit.service \
+         "$service_d"/plymouth-quit-wait.service \
+         "$service_d"/plymouth-read-write.service \
+         "$service_d"/plymouth-switch-root.service \
+         "$service_d"/plymouth-kexec.service \
+         "$service_d"/systemd-ask-password-plymouth.*
+      # Ignore serial in all calls to plymouthd
+      sed -i 's#/sbin/plymouthd#/sbin/plymouthd --ignore-serial#' \
+          "$service_d"/plymouth-poweroff.service \
+          "$service_d"/plymouth-reboot.service \
+          "$service_d"/plymouth-halt.service
       # Set UC as the default plymouth theme
       ln -sf ubuntu-core/ubuntu-core.plymouth \
           "$SNAPCRAFT_PART_INSTALL"/usr/share/plymouth/themes/default.plymouth
