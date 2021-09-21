@@ -1,0 +1,53 @@
+From a28f4e7efbf328b4eb2319a4a154350881afc87d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Alfonso=20S=C3=A1nchez-Beato?=
+ <alfonso.sanchez-beato@canonical.com>
+Date: Mon, 20 Sep 2021 17:14:06 +0200
+Subject: [PATCH 3/3] Add ignore-serial option
+
+Add --ignore-serial option so we can ignore serial consoled also when
+starting plymouthd and not only from the kernel command line.
+---
+ src/main.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/main.c b/src/main.c
+index c6c138c..d93c0d5 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -2101,6 +2101,7 @@ main (int    argc,
+         bool no_boot_log = false;
+         bool no_daemon = false;
+         bool debug = false;
++        bool ignore_serial = false;
+         bool attach_to_session;
+         ply_daemon_handle_t *daemon_handle = NULL;
+         char *mode_string = NULL;
+@@ -2124,6 +2125,7 @@ main (int    argc,
+                                         "kernel-command-line", "Fake kernel command line to use", PLY_COMMAND_OPTION_TYPE_STRING,
+                                         "tty", "TTY to use instead of default", PLY_COMMAND_OPTION_TYPE_STRING,
+                                         "no-boot-log", "Do not write boot log file", PLY_COMMAND_OPTION_TYPE_FLAG,
++                                        "ignore-serial", "Ignore serial consoles", PLY_COMMAND_OPTION_TYPE_FLAG,
+                                         NULL);
+ 
+         if (!ply_command_parser_parse_arguments (state.command_parser, state.loop, argv, argc)) {
+@@ -2144,6 +2146,7 @@ main (int    argc,
+                                         "no-boot-log", &no_boot_log,
+                                         "no-daemon", &no_daemon,
+                                         "debug", &debug,
++                                        "ignore-serial", &ignore_serial,
+                                         "debug-file", &debug_buffer_path,
+                                         "pid-file", &pid_file,
+                                         "tty", &tty,
+@@ -2281,7 +2284,8 @@ main (int    argc,
+         if (isnan (state.device_timeout) || state.device_timeout <= 0.0)
+                 state.device_timeout = 8.0;
+ 
+-        if (ply_kernel_command_line_has_argument ("plymouth.ignore-serial-consoles"))
++        if (ply_kernel_command_line_has_argument ("plymouth.ignore-serial-consoles") ||
++            ignore_serial == true)
+                 device_manager_flags |= PLY_DEVICE_MANAGER_FLAGS_IGNORE_SERIAL_CONSOLES;
+ 
+         if (ply_kernel_command_line_has_argument ("plymouth.ignore-udev") ||
+-- 
+2.25.1
+

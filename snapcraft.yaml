@@ -1,0 +1,64 @@
+name: core-splash20
+base: core20
+version: '0.1'
+summary: Snap with bits to support splash screen on UC
+description: |
+  This snap contains the bits needed to support splash screen on UC. The
+  expected usage is by staging it from the core20 snap. Ideally, all the
+  moving parts will be eventually upstreamed and it will be possible to
+  simply stage packages to the core snap instead of using this snap.
+
+grade: stable
+confinement: strict
+
+parts:
+  plymouth:
+    plugin: autotools
+    source: https://git.launchpad.net/ubuntu/+source/plymouth
+    source-type: git
+    source-branch: applied/ubuntu/focal-updates
+    stage-packages:
+      - libdrm2
+      - libgraphite2-3
+      - libpng16-16
+
+    autotools-configure-parameters:
+      # Try to use same options as the deb package
+      - --disable-silent-rules
+      - --libdir=/usr/lib/$SNAPCRAFT_ARCH_TRIPLET
+      - --prefix=/usr
+      - --localstatedir=/var
+      - --enable-pango
+      - --enable-systemd-integration
+      - --enable-tracing
+      - --with-background-color=0x2c001e
+      - --with-background-start-color-stop=0x2c001e
+      - --with-background-end-color-stop=0x2c001e
+      - --with-logo=/usr/share/plymouth/ubuntu-logo.png
+      - --with-release-file=/etc/os-release
+      - --with-system-root-install
+      - --without-rhgb-compat-link
+    override-build: |
+      set -ex
+      # Apply UC-specific patches, then build
+      git config user.email "snapcraft@canonical.com"
+      git config user.name "snapcraft"
+      git am "$SNAPCRAFT_PROJECT_DIR"/plymouth-patch/*.patch
+      snapcraftctl build
+    prime:
+      - bin/plymouth
+      - sbin/plymouthd
+      - lib/systemd/system
+      - lib/*/libply-splash-core.so*
+      - lib/*/libply.so*
+      - usr/lib/*/libply-splash-graphics.so*
+      - usr/lib/*/plymouth/details.so
+      - usr/lib/*/plymouth/script.so
+      - usr/lib/*/plymouth/text.so
+      - usr/lib/*/plymouth/renderers/drm.so
+      - usr/lib/*/plymouth/renderers/framebuffer.so
+      - usr/share/plymouth/themes/details/
+      # Dependencies
+      - usr/lib/*/libdrm.so*
+      - usr/lib/*/libpng16.so*
+      - usr/lib/*/libgraphite2.so*

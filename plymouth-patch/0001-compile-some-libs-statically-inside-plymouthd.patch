@@ -1,0 +1,127 @@
+From 3e55d7d71f006113caaa26225d9286f242516e5a Mon Sep 17 00:00:00 2001
+From: "Alfonso Sanchez-Beato (email Canonical)"
+ <alfonso.sanchez-beato@canonical.com>
+Date: Wed, 15 Sep 2021 16:04:18 +0200
+Subject: [PATCH 1/3] compile some libs statically inside plymouthd
+
+Compile some libraries statically inside plymouthd to reduce the
+number of pulled external dependencies. We include the label plugin
+inside plymouthd as it was the main component pulling shared
+libraries, and we cannot compile it statically while being itself a
+shared library (static libs would need to have been compiled with
+-fPIC, which is not the case).
+
+Gbp-Pq: Name 0016-compile-some-libs-statically-inside-plymouthd.patch
+---
+ src/Makefile.am                               | 26 +++++++++++++++++--
+ .../controls/label/plugin.c => label.c}       |  0
+ src/libply-splash-graphics/ply-label.c        | 10 +++++--
+ src/plugins/controls/Makefile.am              |  6 ++---
+ 4 files changed, 35 insertions(+), 7 deletions(-)
+ rename src/{plugins/controls/label/plugin.c => label.c} (100%)
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 95ed019..baafba8 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -5,6 +5,7 @@ endif
+ AM_CPPFLAGS = -I$(top_srcdir)                                                 \
+            -I$(srcdir)/libply                                                 \
+            -I$(srcdir)/libply-splash-core                                     \
++           -I$(srcdir)/libply-splash-graphics                                 \
+            -I$(srcdir)                                                        \
+            -DPLYMOUTH_LOG_DIRECTORY=\"$(localstatedir)/log\"                  \
+            -DPLYMOUTH_SPOOL_DIRECTORY=\"$(localstatedir)/spool/plymouth\"     \
+@@ -14,7 +15,7 @@ AM_CPPFLAGS = -I$(top_srcdir)                                                 \
+ plymouthdbindir = $(plymouthdaemondir)
+ plymouthdbin_PROGRAMS = plymouthd
+ 
+-plymouthd_CFLAGS = $(PLYMOUTH_CFLAGS)                                         \
++plymouthd_CFLAGS = $(PLYMOUTH_CFLAGS) $(PANGO_CFLAGS)                         \
+ 		   -rdynamic                                                  \
+ 		   -DPLYMOUTH_PLUGIN_PATH=\"$(PLYMOUTH_PLUGIN_PATH)\"         \
+ 		   -DPLYMOUTH_THEME_PATH=\"$(PLYMOUTH_THEME_PATH)/\"          \
+@@ -22,12 +23,33 @@ plymouthd_CFLAGS = $(PLYMOUTH_CFLAGS)                                         \
+ 		   -DPLYMOUTH_RUNTIME_DIR=\"$(PLYMOUTH_RUNTIME_DIR)\"         \
+ 		   -DPLYMOUTH_CONF_DIR=\"$(PLYMOUTH_CONF_DIR)/\"              \
+ 		   -DPLYMOUTH_RUNTIME_THEME_PATH=\"$(PLYMOUTH_RUNTIME_THEME_PATH)/\"
+-plymouthd_LDADD = $(PLYMOUTH_LIBS) libply/libply.la libply-splash-core/libply-splash-core.la
++plymouthd_LDADD = -l:libcairo.a \
++                  -l:libfontconfig.a \
++                  -l:libfreetype.a \
++                  -l:libpng.a \
++                  -l:libpixman-1.a \
++                  -l:libpangocairo-1.0.a \
++                  -l:libpango-1.0.a \
++                  -l:libpangoft2-1.0.a \
++                  -l:libharfbuzz.a \
++                  -l:libthai.a \
++                  -l:libfribidi.a \
++                  -l:libdatrie.a \
++                  -lgraphite2 \
++                  -lexpat \
++                  -luuid \
++                  -lglib-2.0 \
++                  -lgobject-2.0 \
++                  -lz \
++                  -lpthread \
++                  $(PLYMOUTH_LIBS) \
++                  libply/libply.la libply-splash-core/libply-splash-core.la
+ plymouthd_SOURCES =                                                            \
+                    ply-boot-protocol.h                                        \
+                    ply-boot-server.h                                          \
+                    ply-boot-server.c                                          \
+                    plugins/splash/details/plugin.c                  \
++                   label.c                                          \
+                    main.c
+ 
+ plymouthdrundir = $(localstatedir)/run/plymouth
+diff --git a/src/plugins/controls/label/plugin.c b/src/label.c
+similarity index 100%
+rename from src/plugins/controls/label/plugin.c
+rename to src/label.c
+diff --git a/src/libply-splash-graphics/ply-label.c b/src/libply-splash-graphics/ply-label.c
+index 42d9dfb..7eaef34 100644
+--- a/src/libply-splash-graphics/ply-label.c
++++ b/src/libply-splash-graphics/ply-label.c
+@@ -32,6 +32,8 @@
+ #include <unistd.h>
+ #include <wchar.h>
+ 
++#include <dlfcn.h>
++
+ #include "ply-label-plugin.h"
+ #include "ply-event-loop.h"
+ #include "ply-list.h"
+@@ -96,10 +98,14 @@ ply_label_load_plugin (ply_label_t *label)
+ 
+         get_plugin_interface_function_t get_label_plugin_interface;
+ 
+-        label->module_handle = ply_open_module (PLYMOUTH_PLUGIN_PATH "label.so");
++        label->module_handle = (ply_module_handle_t *)
++                               dlopen (NULL,
++                                       RTLD_NODELETE | RTLD_NOW | RTLD_LOCAL);
+ 
+-        if (label->module_handle == NULL)
++        if (label->module_handle == NULL) {
++                ply_trace ("Could not load handle for plymouthd: %s", dlerror ());
+                 return false;
++        }
+ 
+         get_label_plugin_interface = (get_plugin_interface_function_t)
+                                      ply_module_look_up_function (label->module_handle,
+diff --git a/src/plugins/controls/Makefile.am b/src/plugins/controls/Makefile.am
+index f1621f9..ca7cc2d 100644
+--- a/src/plugins/controls/Makefile.am
++++ b/src/plugins/controls/Makefile.am
+@@ -1,4 +1,4 @@
+-if ENABLE_PANGO
+-SUBDIRS = label
+-endif
++# if ENABLE_PANGO
++# SUBDIRS = label
++# endif
+ MAINTAINERCLEANFILES = Makefile.in
+-- 
+2.25.1
+
