@@ -58,6 +58,7 @@ parts:
       - pkg-config
       - systemd
     stage-packages:
+      - fonts-ubuntu
       - libdrm2
       - libgraphite2-3
       - libpng16-16
@@ -115,6 +116,7 @@ parts:
       - usr/share/plymouth/themes/details/
       - usr/share/plymouth/themes/text/
       - usr/share/plymouth/themes/default.plymouth
+      - usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf
       # Dependencies
       - usr/lib/*/libdrm.so*
       - usr/lib/*/libpng16.so*
