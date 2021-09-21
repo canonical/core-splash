@@ -11,7 +11,7 @@ ConditionVirtualization=!container
 Requires=plymouth-quit.service splash-client.service plymouth-show-run.service plymouth-show-install.service plymouth-show-recover.service
 
 [Service]
-ExecStart=/sbin/plymouthd --mode=boot --pid-file=/run/plymouth/pid --attach-to-session
+ExecStart=/sbin/plymouthd --mode=boot --pid-file=/run/plymouth/pid --attach-to-session --ignore-serial
 ExecStartPost=-/bin/plymouth show-splash
 Type=forking
 KillMode=none
