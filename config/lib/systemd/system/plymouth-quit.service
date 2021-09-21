@@ -1,0 +1,10 @@
+[Unit]
+Description=Terminate Plymouth Boot Screen
+After=plymouth-start.service snapd.seeded.service run-mnt-ubuntu\x2dseed.mount
+ConditionKernelCommandLine=snapd_recovery_mode=run
+
+[Service]
+ExecStart=-/bin/plymouth quit
+ExecStartPost=-systemctl stop splash-client.service
+Type=oneshot
+TimeoutSec=20

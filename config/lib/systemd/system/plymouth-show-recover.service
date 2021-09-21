@@ -1,0 +1,13 @@
+[Unit]
+Description=Display state on splash
+After=plymouth-start.service
+ConditionKernelCommandLine=snapd_recovery_mode=recover
+ConditionPathExists=/run/plymouth/pid
+
+[Service]
+ExecStart=-/bin/plymouth display-message --text='Running recovery...'
+Type=oneshot
+TimeoutSec=20
+
+[Install]
+WantedBy=sysinit.target
