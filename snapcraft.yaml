@@ -12,6 +12,27 @@ grade: stable
 confinement: strict
 
 parts:
+
+  # We stage the packages that we are going to compile so
+  # 1. We get the copyright in the usual way
+  # 2. We ensure that the packages appear as primed in the manifest so
+  #    we can get CVE notifications for them.
+  copyright:
+    plugin: nil
+    stage-packages:
+      - plymouth
+      - libpango-1.0-0
+    stage:
+      - usr/share/doc/libdatrie1/
+      - usr/share/doc/libfontconfig1/
+      - usr/share/doc/libfreetype6/
+      - usr/share/doc/libfribidi0/
+      - usr/share/doc/libharfbuzz0b/
+      - usr/share/doc/libpango-1.0*/
+      - usr/share/doc/libplymouth5/
+      - usr/share/doc/libthai0/
+      - usr/share/doc/plymouth/
+
   pango-static:
     plugin: meson
     source: https://git.launchpad.net/ubuntu/+source/pango1.0
@@ -116,7 +137,7 @@ parts:
     prime:
       - bin/plymouth
       - sbin/plymouthd
-      - lib/systemd/system
+      - lib/systemd/system/
       - lib/*/libply-splash-core.so*
       - lib/*/libply.so*
       - usr/lib/*/libply-splash-graphics.so*
