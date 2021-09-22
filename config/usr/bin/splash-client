@@ -1,11 +1,12 @@
 #!/bin/bash -ex
 
+# TODO remove -x
 # Change 1 is "Initialize system state"
 msg=
 prev_msg=
 while true; do
     sleep 0.5
-    msg=$(snap change --abs-time 1 | grep -m1 Doing |
+    msg=$(snap change --abs-time 1 | grep -m1 'Doing\|Error' |
               awk -F ' +' '{ s = ""; for (i = 4; i <= NF; i++) s = s $i " "; print s }') \
                   || true
     if [ "$msg" != "$prev_msg" ] && [ -n "$msg" ]; then
