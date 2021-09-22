@@ -1,6 +1,5 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 
-# TODO remove -x
 # Change 1 is "Initialize system state"
 msg=
 prev_msg=
