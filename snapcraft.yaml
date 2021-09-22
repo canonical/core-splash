@@ -150,6 +150,10 @@ parts:
       - usr/share/plymouth/themes/text/
       - usr/share/plymouth/themes/default.plymouth
       - usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf
+      - usr/share/doc/fonts-ubuntu/
+      - usr/share/doc/libdrm2/
+      - usr/share/doc/libgraphite2*/
+      - usr/share/doc/libpng16*/
       # Dependencies
       - usr/lib/*/libdrm.so*
       - usr/lib/*/libpng16.so*
