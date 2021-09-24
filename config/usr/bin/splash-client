@@ -12,10 +12,8 @@ while true; do
                       || true
         if [[ "$line" =~ Error ]]; then
             printf -v msg "ERROR: %s\nPress ESC for details" "$msg"
-            plymouth display-message --text "$msg"
-        else
-            plymouth display-message --text "$msg"
         fi
+        plymouth display-message --text "$msg"
         prev_line=$line
     fi
 done
