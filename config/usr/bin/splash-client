@@ -1,15 +1,21 @@
 #!/bin/bash -e
 
 # Change 1 is "Initialize system state"
-msg=
-prev_msg=
+prev_line=
 while true; do
     sleep 0.5
-    msg=$(snap change --abs-time 1 | grep -m1 'Doing\|Error' |
-              awk -F ' +' '{ s = ""; for (i = 4; i <= NF; i++) s = s $i " "; print s }') \
-                  || true
-    if [ "$msg" != "$prev_msg" ] && [ -n "$msg" ]; then
-        plymouth display-message --text "$msg"
-        prev_msg=$msg
+    line=$(snap change --abs-time 1 | grep -m1 'Doing\|Error')
+
+    if [ -n "$line" ] && [ "$line" != "$prev_line" ]; then
+        msg=$(printf "%s" "$line" |
+                  awk -F ' +' '{ s = ""; for (i = 4; i <= NF; i++) s = s $i " "; print s }') \
+                      || true
+        if [[ "$line" =~ Error ]]; then
+            printf -v msg "ERROR: %s\nPress ESC for details" "$msg"
+            plymouth display-message --text "$msg"
+        else
+            plymouth display-message --text "$msg"
+        fi
+        prev_line=$line
     fi
 done
