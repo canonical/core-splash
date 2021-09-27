@@ -124,7 +124,7 @@ parts:
          "$service_d"/plymouth-kexec.service \
          "$service_d"/systemd-ask-password-plymouth.*
       # Ignore serial in all calls to plymouthd
-      sed -i 's#/sbin/plymouthd#/sbin/plymouthd --ignore-serial#' \
+      sed -i 's#/sbin/plymouthd#/sbin/plymouthd --ignore-serial-consoles#' \
           "$service_d"/plymouth-poweroff.service \
           "$service_d"/plymouth-reboot.service \
           "$service_d"/plymouth-halt.service
