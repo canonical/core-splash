@@ -4,12 +4,11 @@
 prev_line=
 while true; do
     sleep 0.5
-    line=$(snap change --abs-time 1 | grep -m1 'Doing\|Error')
+    line=$(snap change --abs-time 1 | grep -m1 'Doing\|Error') || true
 
     if [ -n "$line" ] && [ "$line" != "$prev_line" ]; then
         msg=$(printf "%s" "$line" |
-                  awk -F ' +' '{ s = ""; for (i = 4; i <= NF; i++) s = s $i " "; print s }') \
-                      || true
+                  awk -F ' +' '{ s = ""; for (i = 4; i <= NF; i++) s = s $i " "; print s }')
         if [[ "$line" =~ Error ]]; then
             printf -v msg "ERROR: %s\nPress ESC for details" "$msg"
         fi
