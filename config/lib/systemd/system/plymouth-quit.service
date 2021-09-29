@@ -1,7 +1,8 @@
 [Unit]
 Description=Terminate Plymouth Boot Screen
-After=plymouth-start.service snapd.seeded.service run-mnt-ubuntu\x2dseed.mount
+After=snapd.seeded.service
 ConditionKernelCommandLine=snapd_recovery_mode=run
+ConditionPathExists=/run/plymouth/pid
 
 [Service]
 ExecStart=-/bin/plymouth quit

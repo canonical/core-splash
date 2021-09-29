@@ -8,7 +8,7 @@ ConditionKernelCommandLine=!plymouth.enable=0
 ConditionKernelCommandLine=!nosplash
 ConditionKernelCommandLine=splash
 ConditionVirtualization=!container
-Requires=plymouth-quit.service splash-client.service plymouth-show-run.service plymouth-show-install.service plymouth-show-recover.service
+ConditionPathExists=!/run/plymouth/pid
 
 [Service]
 ExecStart=/sbin/plymouthd --mode=boot --pid-file=/run/plymouth/pid --attach-to-session --ignore-serial-consoles
