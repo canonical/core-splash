@@ -133,12 +133,16 @@ parts:
       # Strip binaries
       find "$SNAPCRAFT_PART_INSTALL"/ -executable -type f | xargs file -Ni |
           grep 'application/x-executable\|application/x-sharedlib' | cut -d: -f1 | xargs strip
+    organize:
+      bin: usr/bin
+      sbin: usr/sbin
+      lib: usr/lib
     prime:
-      - bin/plymouth
-      - sbin/plymouthd
-      - lib/systemd/system/
-      - lib/*/libply-splash-core.so*
-      - lib/*/libply.so*
+      - usr/bin/plymouth
+      - usr/sbin/plymouthd
+      - usr/lib/systemd/system/
+      - usr/lib/*/libply-splash-core.so*
+      - usr/lib/*/libply.so*
       - usr/lib/*/libply-splash-graphics.so*
       - usr/lib/*/plymouth/details.so
       - usr/lib/*/plymouth/script.so
