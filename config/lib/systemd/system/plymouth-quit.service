@@ -1,6 +1,6 @@
 [Unit]
 Description=Terminate Plymouth Boot Screen
-After=snapd.seeded.service
+After=plymouth-start.service snapd.seeded.service
 ConditionKernelCommandLine=snapd_recovery_mode=run
 ConditionPathExists=/run/plymouth/pid
 
