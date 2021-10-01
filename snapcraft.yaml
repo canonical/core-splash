@@ -111,7 +111,6 @@ parts:
       # Deactivate/remove bits unneeded or replaced by config part
       service_d="$SNAPCRAFT_PART_INSTALL"/lib/systemd/system
       rm "$service_d"/multi-user.target.wants/plymouth-quit-wait.service \
-         "$service_d"/multi-user.target.wants/plymouth-quit.service \
          "$service_d"/sysinit.target.wants/plymouth-read-write.service \
          "$service_d"/kexec.target.wants/plymouth-kexec.service \
          "$service_d"/initrd-switch-root.target.wants/plymouth-switch-root.service \
