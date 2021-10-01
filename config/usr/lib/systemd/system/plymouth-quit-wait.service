@@ -1,6 +1,6 @@
 [Unit]
 Description=Hold until boot process finishes up
-After=rc-local.service systemd-user-sessions.service
+After=plymouth-start.service rc-local.service systemd-user-sessions.service
 ConditionPathExists=/run/plymouth/pid
 
 [Service]
