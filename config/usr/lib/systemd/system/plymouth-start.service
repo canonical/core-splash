@@ -3,6 +3,7 @@ Description=Show Plymouth Boot Screen
 DefaultDependencies=no
 Wants=systemd-ask-password-plymouth.path
 After=systemd-udev-trigger.service systemd-udevd.service keyboard-setup.service
+After=run-mnt-data.mount
 Before=systemd-ask-password-plymouth.service
 ConditionKernelCommandLine=!plymouth.enable=0
 ConditionKernelCommandLine=!nosplash

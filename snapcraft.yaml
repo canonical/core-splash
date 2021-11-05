@@ -1,4 +1,4 @@
-name: core-splash
+name: core-splash20
 base: core20
 version: '0.1'
 summary: Snap with bits to support splash screen on UC
@@ -110,8 +110,7 @@ parts:
       snapcraftctl build
       # Deactivate/remove bits unneeded or replaced by config part
       service_d="$SNAPCRAFT_PART_INSTALL"/lib/systemd/system
-      rm "$service_d"/multi-user.target.wants/plymouth-quit-wait.service \
-         "$service_d"/sysinit.target.wants/plymouth-read-write.service \
+      rm "$service_d"/sysinit.target.wants/plymouth-read-write.service \
          "$service_d"/kexec.target.wants/plymouth-kexec.service \
          "$service_d"/initrd-switch-root.target.wants/plymouth-switch-root.service \
          "$service_d"/initrd-switch-root.target.wants/plymouth-start.service \
@@ -133,12 +132,18 @@ parts:
       # Strip binaries
       find "$SNAPCRAFT_PART_INSTALL"/ -executable -type f | xargs file -Ni |
           grep 'application/x-executable\|application/x-sharedlib' | cut -d: -f1 | xargs strip
+    organize:
+      bin: usr/bin
+      sbin: usr/sbin
+      lib: usr/lib
+    stage:
+      - -usr/share/plymouth/plymouthd.defaults
     prime:
-      - bin/plymouth
-      - sbin/plymouthd
-      - lib/systemd/system/
-      - lib/*/libply-splash-core.so*
-      - lib/*/libply.so*
+      - usr/bin/plymouth
+      - usr/sbin/plymouthd
+      - usr/lib/systemd/system/
+      - usr/lib/*/libply-splash-core.so*
+      - usr/lib/*/libply.so*
       - usr/lib/*/libply-splash-graphics.so*
       - usr/lib/*/plymouth/details.so
       - usr/lib/*/plymouth/script.so

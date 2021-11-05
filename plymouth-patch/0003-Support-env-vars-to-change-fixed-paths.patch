@@ -1,0 +1,244 @@
+From d59a90e502b56f6f6d69a1929ef108d6dca539ae Mon Sep 17 00:00:00 2001
+From: "Alfonso Sanchez-Beato (email Canonical)"
+ <alfonso.sanchez-beato@canonical.com>
+Date: Tue, 19 Oct 2021 16:08:33 +0200
+Subject: [PATCH] Support env vars to change fixed paths
+
+Add support to using environent variables so we run plymouth from a
+different sysroot. The environment variables are:
+
+* PLYMOUTH_PLUGIN_PATH
+* PLYMOUTH_THEME_PATH
+* PLYMOUTH_POLICY_DIR
+
+Which can be set to override the default directories with the same
+name in plymouth's configure script.
+---
+ src/libply-splash-core/ply-renderer.c | 19 +++++++---
+ src/libply/Makefile.am                |  4 +-
+ src/libply/ply-utils.c                | 18 +++++++++
+ src/libply/ply-utils.h                |  3 ++
+ src/main.c                            | 54 ++++++++++++++++++++++-----
+ 5 files changed, 82 insertions(+), 16 deletions(-)
+
+diff --git a/src/libply-splash-core/ply-renderer.c b/src/libply-splash-core/ply-renderer.c
+index c1d1a05..857e527 100644
+--- a/src/libply-splash-core/ply-renderer.c
++++ b/src/libply-splash-core/ply-renderer.c
+@@ -27,9 +27,11 @@
+ 
+ #include <assert.h>
+ #include <errno.h>
++#include <limits.h>
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include <sys/socket.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+@@ -268,20 +270,27 @@ ply_renderer_open (ply_renderer_t *renderer)
+                 const char         *path;
+         } known_plugins[] =
+         {
+-                { PLY_RENDERER_TYPE_X11,          PLYMOUTH_PLUGIN_PATH "renderers/x11.so"          },
+-                { PLY_RENDERER_TYPE_DRM,          PLYMOUTH_PLUGIN_PATH "renderers/drm.so"          },
+-                { PLY_RENDERER_TYPE_FRAME_BUFFER, PLYMOUTH_PLUGIN_PATH "renderers/frame-buffer.so" },
++                { PLY_RENDERER_TYPE_X11,          "/renderers/x11.so"          },
++                { PLY_RENDERER_TYPE_DRM,          "/renderers/drm.so"          },
++                { PLY_RENDERER_TYPE_FRAME_BUFFER, "/renderers/frame-buffer.so" },
+                 { PLY_RENDERER_TYPE_NONE,         NULL                                             }
+         };
+ 
+         renderer->is_active = false;
+         for (i = 0; known_plugins[i].type != PLY_RENDERER_TYPE_NONE; i++) {
+                 if (renderer->type == known_plugins[i].type ||
+-                    renderer->type == PLY_RENDERER_TYPE_AUTO)
+-                        if (ply_renderer_open_plugin (renderer, known_plugins[i].path)) {
++                    renderer->type == PLY_RENDERER_TYPE_AUTO) {
++                        char renderer_p[PATH_MAX];
++
++                        strncpy (renderer_p, get_plugins_path (),
++                                 sizeof (renderer_p) - strlen (known_plugins[i].path) - 1);
++                        strcat (renderer_p, known_plugins[i].path);
++
++                        if (ply_renderer_open_plugin (renderer, renderer_p)) {
+                                 renderer->is_active = true;
+                                 goto out;
+                         }
++                }
+         }
+ 
+         ply_trace ("could not find suitable rendering plugin");
+diff --git a/src/libply/Makefile.am b/src/libply/Makefile.am
+index 8f0abd9..64e69aa 100644
+--- a/src/libply/Makefile.am
++++ b/src/libply/Makefile.am
+@@ -1,6 +1,8 @@
+ AM_CPPFLAGS = -I$(top_srcdir)                                                 \
+            -I$(srcdir)                                                        \
+-           -DPLYMOUTH_TIME_DIRECTORY=\"$(localstatedir)/lib/plymouth/\"       
++           -DPLYMOUTH_TIME_DIRECTORY=\"$(localstatedir)/lib/plymouth/\"       \
++           -DPLYMOUTH_PLUGIN_PATH=\"$(PLYMOUTH_PLUGIN_PATH)\"
++
+ 
+ if WITH_SYSTEM_ROOT_INSTALL
+ librarydir = $(subst /usr/lib,/lib,$(libdir))
+diff --git a/src/libply/ply-utils.c b/src/libply/ply-utils.c
+index f90ac40..88c25de 100644
+--- a/src/libply/ply-utils.c
++++ b/src/libply/ply-utils.c
+@@ -1012,4 +1012,22 @@ double ply_strtod(const char *str)
+         return ret;
+ }
+ 
++const char *
++get_plugins_path (void)
++{
++        return get_env_variable ("PLYMOUTH_PLUGIN_PATH", PLYMOUTH_PLUGIN_PATH);
++}
++
++const char *
++get_env_variable (const char *var, const char *defval)
++{
++        const char *val;
++
++        val = getenv (var);
++        if (val != NULL && val[0] != '\0')
++                return val;
++
++        return defval;
++}
++
+ /* vim: set ts=4 sw=4 expandtab autoindent cindent cino={.5s,(0: */
+diff --git a/src/libply/ply-utils.h b/src/libply/ply-utils.h
+index 47bb3f2..72fb880 100644
+--- a/src/libply/ply-utils.h
++++ b/src/libply/ply-utils.h
+@@ -132,6 +132,9 @@ char *ply_kernel_command_line_get_key_value (const char *key);
+ 
+ double ply_strtod(const char *str);
+ 
++const char *get_env_variable (const char *var, const char *defval);
++const char *get_plugins_path (void);
++
+ #endif
+ 
+ #endif /* PLY_UTILS_H */
+diff --git a/src/main.c b/src/main.c
+index 8fb082b..b97cc47 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -276,6 +276,19 @@ show_messages (state_t *state)
+         }
+ }
+ 
++static const char *
++get_default_theme_path (void)
++{
++        return get_env_variable ("PLYMOUTH_THEME_PATH", PLYMOUTH_THEME_PATH);
++
++}
++
++static const char *
++get_policy_dir (void)
++{
++        return get_env_variable ("PLYMOUTH_POLICY_DIR", PLYMOUTH_POLICY_DIR);
++}
++
+ static bool
+ get_theme_path (const char  *splash_string,
+                 const char  *configured_theme_dir,
+@@ -283,7 +296,7 @@ get_theme_path (const char  *splash_string,
+ {
+         const char *paths[] = { PLYMOUTH_RUNTIME_THEME_PATH,
+                                 configured_theme_dir,
+-                                PLYMOUTH_THEME_PATH };
++                                get_default_theme_path () };
+         size_t i;
+ 
+         for (i = 0; i < PLY_NUMBER_OF_ELEMENTS (paths); ++i) {
+@@ -459,9 +472,14 @@ find_distribution_default_splash (state_t *state)
+                 return;
+ 
+         if (!load_settings (state, PLYMOUTH_RUNTIME_DIR "/plymouthd.defaults", &state->distribution_default_splash_path)) {
+-                ply_trace ("failed to load " PLYMOUTH_RUNTIME_DIR "/plymouthd.defaults, trying " PLYMOUTH_POLICY_DIR);
+-                if (!load_settings (state, PLYMOUTH_POLICY_DIR "plymouthd.defaults", &state->distribution_default_splash_path)) {
+-                        ply_trace ("failed to load " PLYMOUTH_POLICY_DIR "plymouthd.defaults");
++                char policy_p[PATH_MAX];
++
++                strncpy (policy_p, get_policy_dir (),
++                         sizeof (policy_p) - strlen ("/plymouthd.defaults") - 1);
++                strcat (policy_p, "/plymouthd.defaults");
++                ply_trace ("failed to load " PLYMOUTH_RUNTIME_DIR "/plymouthd.defaults, trying %s", policy_p);
++                if (!load_settings (state, policy_p, &state->distribution_default_splash_path)) {
++                    ply_trace ("failed to load %s", policy_p);
+                         return;
+                 }
+         }
+@@ -495,14 +513,24 @@ show_default_splash (state_t *state)
+         }
+ 
+         if (state->boot_splash == NULL) {
++                char theme_p[PATH_MAX];
++
++                strncpy (theme_p, get_default_theme_path (),
++                         sizeof (theme_p) - sizeof("/default.plymouth") - 1);
++                strcat (theme_p, "/default.plymouth");
+                 ply_trace ("Trying old scheme for default splash");
+-                state->boot_splash = show_theme (state, PLYMOUTH_THEME_PATH "default.plymouth");
++                state->boot_splash = show_theme (state, theme_p);
+         }
+ 
+         if (state->boot_splash == NULL) {
++                char theme_p[PATH_MAX];
++
++                strncpy (theme_p, get_default_theme_path (),
++                         sizeof (theme_p) - sizeof("/text.plymouth") - 1);
++                strcat (theme_p, "/text.plymouth");
+                 ply_trace ("Could not start default splash screen,"
+                            "showing text splash screen");
+-                state->boot_splash = show_theme (state, PLYMOUTH_THEME_PATH "text.plymouth");
++                state->boot_splash = show_theme (state, theme_p);
+         }
+ 
+         if (state->boot_splash == NULL) {
+@@ -1695,7 +1723,7 @@ load_built_in_theme (state_t *state)
+         ply_trace ("Loading built-in theme");
+ 
+         splash = ply_boot_splash_new ("",
+-                                      PLYMOUTH_PLUGIN_PATH,
++                                      get_plugins_path (),
+                                       state->boot_buffer);
+ 
+         is_loaded = ply_boot_splash_load_built_in (splash);
+@@ -1727,7 +1755,7 @@ load_theme (state_t    *state,
+                    theme_path);
+ 
+         splash = ply_boot_splash_new (theme_path,
+-                                      PLYMOUTH_PLUGIN_PATH,
++                                      get_plugins_path (),
+                                       state->boot_buffer);
+ 
+         is_loaded = ply_boot_splash_load (splash);
+@@ -1972,9 +2000,15 @@ initialize_environment (state_t *state)
+ {
+         ply_trace ("initializing minimal work environment");
+ 
+-        if (!state->default_tty)
+-                if (getenv ("DISPLAY") != NULL && access (PLYMOUTH_PLUGIN_PATH "renderers/x11.so", F_OK) == 0)
++        if (!state->default_tty) {
++                char renderer_p[PATH_MAX];
++
++                strncpy (renderer_p, get_plugins_path (),
++                         sizeof (renderer_p) - sizeof("/renderers/x11.so") - 1);
++                strcat (renderer_p, "/renderers/x11.so");
++                if (getenv ("DISPLAY") != NULL && access (renderer_p, F_OK) == 0)
+                         state->default_tty = "/dev/tty";
++        }
+         if (!state->default_tty) {
+                 if (state->mode == PLY_BOOT_SPLASH_MODE_SHUTDOWN ||
+                     state->mode == PLY_BOOT_SPLASH_MODE_REBOOT)
+-- 
+2.25.1
+
